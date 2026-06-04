@@ -1,36 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GrandChase Tracker
 
-## Getting Started
+A modern, highly responsive web application built to help GrandChase players track their daily dungeon clears, character levels, and total attack stats. 
 
-First, run the development server:
+Featuring a custom "Arcane Violet" aesthetic, smooth drag-and-drop reordering, and a fast backend powered by Next.js and Supabase.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
+- **Account System:** Secure, cookie-based authentication.
+- **Roster Management:** Track Level, Total Attack (TA), and Awakening status for 24+ characters.
+- **Daily Dungeon Checklist:** Keep track of your daily limits for endgame dungeons (Crucible, Sanctum of Destruction, Void, etc.).
+- **Smart Filtering & Sorting:** Instantly sort your characters by Level, Clears, or filter them by who still needs to finish their dailies.
+- **Custom Reordering:** Smooth, drag-and-drop character roster organization (powered by Framer Motion).
+- **Arcane Violet Theme:** A custom dark-mode aesthetic designed specifically to fit the fantasy RPG vibe of GrandChase.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
+- **Frontend:** Next.js (App Router), React, Vanilla CSS, Framer Motion
+- **Backend:** Next.js API Routes, Edge Middleware (Proxy)
+- **Database:** Supabase (PostgreSQL)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Disclaimer: This is a fan-made tracker project and is not affiliated with KOG Studios or GrandChase.*
