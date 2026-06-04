@@ -25,6 +25,9 @@ export default function SummaryPage() {
   const [sortOption, setSortOption] = useState("default");
   const [filterOption, setFilterOption] = useState("all");
 
+  const [advFilterStatus, setAdvFilterStatus] = useState("none");
+  const [advFilterDungeons, setAdvFilterDungeons] = useState([]);
+
   const currentDate = new Date();
   const dateString = currentDate.toLocaleDateString('en-CA');
   const displayDate = currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -70,6 +73,18 @@ export default function SummaryPage() {
     }
     if (filterOption === "notFinished") {
       if (available.length > 0 && validClearedIds.length === available.length) return false;
+    }
+
+    if (advFilterStatus !== "none" && advFilterDungeons.length > 0) {
+      if (advFilterStatus === "done") {
+        // Must have cleared ALL selected dungeons
+        const hasAll = advFilterDungeons.every(d => validClearedIds.includes(d));
+        if (!hasAll) return false;
+      } else if (advFilterStatus === "not_done") {
+        // Must be missing AT LEAST ONE of the selected dungeons
+        const missingAtLeastOne = advFilterDungeons.some(d => !validClearedIds.includes(d));
+        if (!missingAtLeastOne) return false;
+      }
     }
     
     return true;
@@ -126,6 +141,47 @@ export default function SummaryPage() {
           <option value="finishedAll">Filter: Finished All Dailies</option>
           <option value="notFinished">Filter: Not Finished Dailies</option>
         </select>
+
+        <select value={advFilterStatus} onChange={e => setAdvFilterStatus(e.target.value)}>
+          <option value="none">Advanced Filter: Off</option>
+          <option value="done">Status: Is Done</option>
+          <option value="not_done">Status: Is Not Done</option>
+        </select>
+
+        {(sortOption !== 'default' || filterOption !== 'all' || searchQuery !== '' || advFilterStatus !== 'none') && (
+          <button 
+            onClick={() => { 
+              setSortOption('default'); 
+              setFilterOption('all'); 
+              setSearchQuery(''); 
+              setAdvFilterStatus('none');
+              setAdvFilterDungeons([]);
+            }}
+            style={{ background: 'rgba(248, 113, 113, 0.1)', borderColor: 'rgba(248, 113, 113, 0.5)', color: 'var(--status-danger)' }}
+          >
+            Clear Filters
+          </button>
+        )}
+
+        {advFilterStatus !== "none" && (
+          <div className="adv-dungeon-pills">
+            {DUNGEONS.map(d => (
+              <button 
+                key={d.id} 
+                className={`pill-btn ${advFilterDungeons.includes(d.id) ? 'active' : ''}`}
+                onClick={() => {
+                  if (advFilterDungeons.includes(d.id)) {
+                    setAdvFilterDungeons(prev => prev.filter(id => id !== d.id));
+                  } else {
+                    setAdvFilterDungeons(prev => [...prev, d.id]);
+                  }
+                }}
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="characters-grid">
