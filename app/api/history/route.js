@@ -1,4 +1,4 @@
-import { readDb } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
@@ -22,9 +22,19 @@ export async function GET() {
     const userId = cookieStore.get('session_user_id')?.value;
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const db = readDb();
-    const clears = db.daily_clears.filter(c => c.user_id === userId);
-    const characters = db.characters;
+    const { data: clears, error: clearsError } = await supabase
+      .from('clears')
+      .select('*')
+      .eq('user_id', userId);
+      
+    if (clearsError) throw clearsError;
+
+    const { data: characters, error: charsError } = await supabase
+      .from('characters')
+      .select('id, name')
+      .eq('user_id', userId);
+      
+    if (charsError) throw charsError;
 
     const charMap = {};
     characters.forEach(c => charMap[c.id] = c.name);
