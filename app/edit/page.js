@@ -34,8 +34,7 @@ export default function EditPage() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
-  const currentDate = new Date();
-  const dateString = currentDate.toLocaleDateString('en-CA');
+  // Date dependencies removed. The backend now calculates the intelligent reset epoch dynamically.
 
   useEffect(() => {
     fetchCharacters();
@@ -43,7 +42,7 @@ export default function EditPage() {
 
   useEffect(() => {
     fetchClears();
-  }, [dateString]);
+  }, []);
 
   const fetchCharacters = async () => {
     const res = await fetch('/api/characters');
@@ -53,7 +52,7 @@ export default function EditPage() {
   };
 
   const fetchClears = async () => {
-    const res = await fetch(`/api/dailies?date=${dateString}`);
+    const res = await fetch('/api/dailies');
     if (res.ok) {
       setClears(await res.json());
     }
@@ -76,7 +75,7 @@ export default function EditPage() {
     if (isCleared) {
       setClears(clears.filter(c => !(c.character_id === charId && c.dungeon_name === dungeonId)));
     } else {
-      setClears([...clears, { character_id: charId, dungeon_name: dungeonId, date: dateString }]);
+      setClears([...clears, { character_id: charId, dungeon_name: dungeonId }]);
     }
 
     await fetch('/api/dailies', {
@@ -85,7 +84,6 @@ export default function EditPage() {
       body: JSON.stringify({
         character_id: charId,
         dungeon_name: dungeonId,
-        date: dateString,
         cleared: !isCleared
       })
     });

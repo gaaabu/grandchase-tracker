@@ -39,13 +39,21 @@ export async function GET() {
     const charMap = {};
     characters.forEach(c => charMap[c.id] = c.name);
 
-    // Group by date
+    // Group by date (converted to PHT to ensure accurate calendar days)
     const history = {};
     clears.forEach(clear => {
-      if (!history[clear.date]) history[clear.date] = {};
-      if (!history[clear.date][clear.character_id]) history[clear.date][clear.character_id] = [];
+      const d = new Date(clear.date);
+      d.setUTCHours(d.getUTCHours() + 8); // Convert UTC to PHT (UTC+8)
       
-      history[clear.date][clear.character_id].push(DUNGEONS[clear.dungeon_name] || clear.dungeon_name);
+      const year = d.getUTCFullYear();
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const clearDate = `${year}-${month}-${day}`;
+
+      if (!history[clearDate]) history[clearDate] = {};
+      if (!history[clearDate][clear.character_id]) history[clearDate][clear.character_id] = [];
+      
+      history[clearDate][clear.character_id].push(DUNGEONS[clear.dungeon_name] || clear.dungeon_name);
     });
 
     const formattedHistory = {};

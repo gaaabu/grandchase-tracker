@@ -28,9 +28,12 @@ export default function SummaryPage() {
   const [advFilterStatus, setAdvFilterStatus] = useState("none");
   const [advFilterDungeons, setAdvFilterDungeons] = useState([]);
 
-  const currentDate = new Date();
-  const dateString = currentDate.toLocaleDateString('en-CA');
-  const displayDate = currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const [displayDate, setDisplayDate] = useState("");
+
+  useEffect(() => {
+    const currentDate = new Date();
+    setDisplayDate(currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+  }, []);
 
   useEffect(() => {
     fetchCharacters();
@@ -38,7 +41,7 @@ export default function SummaryPage() {
 
   useEffect(() => {
     fetchClears();
-  }, [dateString]);
+  }, []);
 
   const fetchCharacters = async () => {
     const res = await fetch('/api/characters');
@@ -48,7 +51,7 @@ export default function SummaryPage() {
   };
 
   const fetchClears = async () => {
-    const res = await fetch(`/api/dailies?date=${dateString}`);
+    const res = await fetch('/api/dailies');
     if (res.ok) {
       setClears(await res.json());
     }
