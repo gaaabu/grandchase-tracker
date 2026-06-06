@@ -6,12 +6,18 @@ export default function History() {
   const [history, setHistory] = useState({});
 
   useEffect(() => {
-    fetch('/api/history')
+    fetch('/api/history', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
-        const today = new Date().toLocaleDateString('en-CA');
+        const d = new Date();
+        d.setUTCHours(d.getUTCHours() + 8);
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        
         const pastHistory = { ...data };
-        delete pastHistory[today];
+        delete pastHistory[todayStr];
         setHistory(pastHistory);
       });
   }, []);

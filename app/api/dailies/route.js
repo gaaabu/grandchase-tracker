@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getLastReset } from '@/lib/timeUtils';
+import { getResetWindow } from '@/lib/timeUtils';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
@@ -23,14 +25,13 @@ export async function GET(request) {
     // Filter clears to only those that happened AFTER the most recent reset
     const now = new Date();
     const activeClears = clears.filter(c => {
-      const resetTime = getLastReset(c.dungeon_name, now);
+      const { lastReset, nextReset } = getResetWindow(c.dungeon_name, now);
       
       // We must handle legacy dates '2026-06-05' and new ISO strings '2026-06-05T...Z'
-      // By wrapping c.date in new Date(), JS handles both perfectly!
-      // However, legacy '2026-06-05' parses as UTC midnight.
       const clearTime = new Date(c.date);
       
-      return clearTime >= resetTime;
+      // Strict boundary check: completely ignore future clears from time-traveling
+      return clearTime >= lastReset && clearTime < nextReset;
     });
     
     return NextResponse.json(activeClears);
@@ -53,7 +54,7 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    const lastReset = getLastReset(dungeon_name, now);
+    const { lastReset, nextReset } = getResetWindow(dungeon_name, now);
 
     if (cleared) {
       // Check if a clear ALREADY exists in the current active reset cycle
@@ -64,6 +65,7 @@ export async function POST(request) {
         .eq('character_id', character_id)
         .eq('dungeon_name', dungeon_name)
         .gte('date', lastReset.toISOString())
+        .lt('date', nextReset.toISOString())
         .limit(1);
         
       if (!existing || existing.length === 0) {
@@ -74,14 +76,15 @@ export async function POST(request) {
         if (error) throw error;
       }
     } else {
-      // Uncheck: Delete any clears that happened DURING this current reset cycle
+      // Uncheck: Delete any clears that happened EXACTLY DURING this current reset cycle
       const { error } = await supabase
         .from('clears')
         .delete()
         .eq('user_id', userId)
         .eq('character_id', character_id)
         .eq('dungeon_name', dungeon_name)
-        .gte('date', lastReset.toISOString());
+        .gte('date', lastReset.toISOString())
+        .lt('date', nextReset.toISOString());
       if (error) throw error;
     }
 

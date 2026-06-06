@@ -16,6 +16,8 @@ const DUNGEONS = {
   'void_nightmare': 'Void Nightmare'
 };
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const cookieStore = await cookies();

@@ -52,7 +52,7 @@ export default function EditPage() {
   };
 
   const fetchClears = async () => {
-    const res = await fetch('/api/dailies');
+    const res = await fetch('/api/dailies', { cache: 'no-store' });
     if (res.ok) {
       setClears(await res.json());
     }
