@@ -34,6 +34,9 @@ export default function EditPage() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
+  const [pendingChanges, setPendingChanges] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+
   // Date dependencies removed. The backend now calculates the intelligent reset epoch dynamically.
 
   useEffect(() => {
@@ -45,7 +48,7 @@ export default function EditPage() {
   }, []);
 
   const fetchCharacters = async () => {
-    const res = await fetch('/api/characters');
+    const res = await fetch('/api/characters', { cache: 'no-store' });
     if (res.ok) {
       setCharacters(await res.json());
     }
@@ -58,15 +61,49 @@ export default function EditPage() {
     }
   };
 
-  const updateCharacter = async (id, field, value) => {
-    const updatedChars = characters.map(c => c.id === id ? { ...c, [field]: value } : c);
-    setCharacters(updatedChars);
+  const updateCharacter = (id, field, value) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || {}),
+        [field]: value
+      }
+    }));
+  };
+
+  const getCharValue = (char, field) => {
+    if (pendingChanges[char.id] && pendingChanges[char.id][field] !== undefined) {
+      return pendingChanges[char.id][field];
+    }
+    return char[field];
+  };
+
+  const saveChanges = async () => {
+    setIsSaving(true);
+    const updates = Object.keys(pendingChanges).map(id => ({
+      id: parseInt(id),
+      ...pendingChanges[id]
+    }));
 
     await fetch('/api/characters', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, [field]: value })
+      body: JSON.stringify(updates)
     });
+
+    const updatedChars = characters.map(c => {
+      if (pendingChanges[c.id]) {
+        return { ...c, ...pendingChanges[c.id] };
+      }
+      return c;
+    });
+    setCharacters(updatedChars);
+    setPendingChanges({});
+    setIsSaving(false);
+  };
+
+  const discardChanges = () => {
+    setPendingChanges({});
   };
 
   const toggleClear = async (charId, dungeonId) => {
@@ -90,7 +127,12 @@ export default function EditPage() {
   };
 
   const toggleDungeons = (charId) => {
-    setOpenDungeons(prev => ({ ...prev, [charId]: !prev[charId] }));
+    setOpenDungeons(prev => {
+      if (prev[charId]) {
+        return {};
+      }
+      return { [charId]: true };
+    });
   };
 
   const openReorderModal = () => {
@@ -281,7 +323,12 @@ export default function EditPage() {
       </div>
 
       <div className="characters-grid">
-        {sortedCharacters.map((char, i) => (
+        {sortedCharacters.map((char, i) => {
+          const currentLevel = getCharValue(char, 'level');
+          const currentTa = getCharValue(char, 'ta');
+          const currentAwakened = getCharValue(char, 'awakened');
+
+          return (
           <div key={char.id} className="character-card" style={{ animationDelay: `${(i % 20) * 0.05}s`, position: 'relative', zIndex: openDungeons[char.id] ? 100 : 1 }}>
             <div className="char-portrait-container">
               <img
@@ -306,7 +353,7 @@ export default function EditPage() {
                 <input
                   type="number"
                   className="stat-input lvl-input"
-                  value={char.level === 0 ? '' : char.level}
+                  value={currentLevel === 0 ? '' : currentLevel}
                   onKeyDown={(e) => {
                     if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') e.preventDefault();
                   }}
@@ -334,7 +381,7 @@ export default function EditPage() {
                 <input
                   type="number"
                   className="stat-input ta-input"
-                  value={char.ta === -1 ? '' : char.ta}
+                  value={currentTa === -1 ? '' : currentTa}
                   onKeyDown={(e) => {
                     if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') e.preventDefault();
                   }}
@@ -349,7 +396,7 @@ export default function EditPage() {
                     }
                   }}
                   onBlur={(e) => {
-                    if (e.target.value === '' || char.ta === -1) {
+                    if (e.target.value === '' || currentTa === -1) {
                       updateCharacter(char.id, 'ta', 0);
                     }
                   }}
@@ -361,7 +408,7 @@ export default function EditPage() {
                 <label className="toggle-switch">
                   <input
                     type="checkbox"
-                    checked={char.awakened}
+                    checked={currentAwakened}
                     onChange={(e) => updateCharacter(char.id, 'awakened', e.target.checked)}
                   />
                   <span className="slider"></span>
@@ -383,7 +430,7 @@ export default function EditPage() {
                 <div className="dropdown-content-absolute">
                   <div className="dungeons-list">
                     {DUNGEONS.map(dungeon => {
-                      const isAvailable = char.level >= dungeon.reqLevel && char.ta >= dungeon.reqTa;
+                      const isAvailable = currentLevel >= dungeon.reqLevel && currentTa >= dungeon.reqTa;
                       if (!isAvailable) return null;
 
                       const isCleared = clears.some(c => c.character_id === char.id && c.dungeon_name === dungeon.id);
@@ -403,7 +450,7 @@ export default function EditPage() {
                         </div>
                       );
                     })}
-                    {DUNGEONS.every(dungeon => char.level < dungeon.reqLevel || char.ta < dungeon.reqTa) && (
+                    {DUNGEONS.every(dungeon => currentLevel < dungeon.reqLevel || currentTa < dungeon.reqTa) && (
                       <div style={{ color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.875rem' }}>
                         No dungeons available.
                       </div>
@@ -414,7 +461,7 @@ export default function EditPage() {
             </div>
 
           </div>
-        ))}
+        )})}
       </div>
 
       {isModalOpen && (
@@ -450,6 +497,16 @@ export default function EditPage() {
               <button className="modal-btn btn-primary" onClick={saveReorder}>Save Order</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {Object.keys(pendingChanges).length > 0 && (
+        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', background: '#1e1e2f', border: '1px solid var(--accent-primary)', padding: '1rem 2rem', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 1000, boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(59, 130, 246, 0.3)' }}>
+          <span style={{ color: '#fff', fontWeight: '500' }}>You have unsaved changes</span>
+          <button onClick={discardChanges} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem 1rem' }}>Discard</button>
+          <button onClick={saveChanges} disabled={isSaving} style={{ background: 'var(--accent-primary)', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       )}
     </main>

@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -30,19 +32,26 @@ export async function PUT(request) {
 
     const body = await request.json();
     
-    // Check if it's a bulk array update (for reordering)
+    // Check if it's a bulk array update (for reordering and bulk save)
     if (Array.isArray(body)) {
-      const updates = body.map(update => ({
-        id: update.id,
-        user_id: userId,
-        sort_order: update.sort_order
-      }));
-      
-      const { error } = await supabase
-        .from('characters')
-        .upsert(updates, { onConflict: 'id' });
+      // Use Promise.all with individual updates to avoid upsert errors with missing NOT NULL columns
+      const updatePromises = body.map(update => {
+        const obj = {};
+        if (update.sort_order !== undefined) obj.sort_order = update.sort_order;
+        if (update.level !== undefined) obj.level = update.level;
+        if (update.ta !== undefined) obj.ta = update.ta;
+        if (update.awakened !== undefined) obj.awakened = update.awakened;
+        
+        return supabase
+          .from('characters')
+          .update(obj)
+          .eq('id', update.id)
+          .eq('user_id', userId);
+      });
 
-      if (error) throw error;
+      const results = await Promise.all(updatePromises);
+      const errors = results.filter(r => r.error).map(r => r.error);
+      if (errors.length > 0) throw errors[0];
       return NextResponse.json({ success: true });
     }
 
