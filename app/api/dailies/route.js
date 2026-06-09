@@ -1,14 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getSessionUser } from '@/lib/session';
 import { getResetWindow } from '@/lib/timeUtils';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('session_user_id')?.value;
+    const userId = await getSessionUser();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Fetch clears from the last 14 days to keep the query fast
@@ -42,8 +41,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('session_user_id')?.value;
+    const userId = await getSessionUser();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();

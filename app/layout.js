@@ -9,7 +9,7 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
-  const session = cookieStore.get('session_user_id');
+  const session = cookieStore.get('session_token');
 
   return (
     <html lang="en">

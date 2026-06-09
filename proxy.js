@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export default async function proxy(request) {
-  const session = request.cookies.get('session_user_id');
+  const session = request.cookies.get('session_token');
 
   const { pathname } = request.nextUrl;
   const protectedRoutes = ['/summary', '/edit', '/history'];

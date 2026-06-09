@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getSessionUser } from '@/lib/session';
 
 const DUNGEONS = {
   'crucible': 'Crucible',
@@ -20,8 +20,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('session_user_id')?.value;
+    const userId = await getSessionUser();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data: clears, error: clearsError } = await supabase
