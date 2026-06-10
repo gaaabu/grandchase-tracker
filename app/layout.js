@@ -13,9 +13,19 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="en">
-      <body>
+      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         {session && <Navbar />}
-        {children}
+        <div style={{ flex: 1 }}>
+          {children}
+        </div>
+        <footer style={{ textAlign: 'center', padding: '2rem', borderTop: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+          <p>Developed with <span style={{ color: 'var(--status-danger)' }}>&lt;3</span> by Gab</p>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+            <a href="https://github.com/gaaabu" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 'bold' }}>
+              Visit my GitHub Profile!
+            </a>
+          </p>
+        </footer>
       </body>
     </html>
   );
