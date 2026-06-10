@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const hasValidLength = password.length >= 8 && password.length <= 24;
@@ -18,9 +19,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      return setError('Passwords do not match');
-    }
+    if (!username) return setError('Username is required');
+    if (!password) return setError('Password is required');
+    if (!hasValidLength) return setError('Password must be 8-24 characters');
+    if (!hasNumber) return setError('Password must contain at least 1 number');
+    if (password !== confirmPassword) return setError('Passwords do not match');
+
+    setIsLoading(true);
 
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -34,6 +39,7 @@ export default function RegisterPage() {
     } else {
       const data = await res.json();
       setError(data.error || 'Failed to register');
+      setIsLoading(false);
     }
   };
 
@@ -86,8 +92,8 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '1rem', fontSize: '1.1rem' }}>
-            Register
+          <button type="submit" className="btn-primary" disabled={isLoading} style={{ width: '100%', marginTop: '1rem', padding: '1rem', fontSize: '1.1rem' }}>
+            {isLoading ? 'Registering...' : 'Register'}
           </button>
         </form>
         <p style={{ textAlign: 'center', marginTop: '2rem' }}>

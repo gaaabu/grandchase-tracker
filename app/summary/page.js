@@ -19,6 +19,7 @@ const DUNGEONS = [
 export default function SummaryPage() {
   const [characters, setCharacters] = useState([]);
   const [clears, setClears] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -36,11 +37,7 @@ export default function SummaryPage() {
   }, []);
 
   useEffect(() => {
-    fetchCharacters();
-  }, []);
-
-  useEffect(() => {
-    fetchClears();
+    Promise.all([fetchCharacters(), fetchClears()]).then(() => setIsLoading(false));
   }, []);
 
   const fetchCharacters = async () => {
@@ -187,7 +184,14 @@ export default function SummaryPage() {
         )}
       </div>
 
-      <div className="characters-grid">
+      {isLoading ? (
+        <div className="characters-grid">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="skeleton skeleton-card"></div>
+          ))}
+        </div>
+      ) : (
+        <div className="characters-grid">
         {sortedCharacters.map((char, i) => {
           const availableDungeons = DUNGEONS.filter(d => char.level >= d.reqLevel && char.ta >= d.reqTa);
           const totalAvailable = availableDungeons.length;
@@ -256,6 +260,7 @@ export default function SummaryPage() {
           );
         })}
       </div>
+      )}
     </main>
   );
 }

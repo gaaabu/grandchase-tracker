@@ -20,6 +20,7 @@ const DUNGEONS = [
 export default function EditPage() {
   const [characters, setCharacters] = useState([]);
   const [clears, setClears] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [openDungeons, setOpenDungeons] = useState({});
 
@@ -40,11 +41,7 @@ export default function EditPage() {
   // Date dependencies removed. The backend now calculates the intelligent reset epoch dynamically.
 
   useEffect(() => {
-    fetchCharacters();
-  }, []);
-
-  useEffect(() => {
-    fetchClears();
+    Promise.all([fetchCharacters(), fetchClears()]).then(() => setIsLoading(false));
   }, []);
 
   const fetchCharacters = async () => {
@@ -322,6 +319,13 @@ export default function EditPage() {
         )}
       </div>
 
+      {isLoading ? (
+        <div className="characters-grid">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="skeleton skeleton-card"></div>
+          ))}
+        </div>
+      ) : (
       <div className="characters-grid">
         {sortedCharacters.map((char, i) => {
           const currentLevel = getCharValue(char, 'level');
@@ -463,6 +467,7 @@ export default function EditPage() {
           </div>
         )})}
       </div>
+      )}
 
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>

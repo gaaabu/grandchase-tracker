@@ -7,11 +7,13 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -25,6 +27,7 @@ export default function LoginPage() {
     } else {
       const data = await res.json();
       setError(data.error || 'Failed to login');
+      setIsLoading(false);
     }
   };
 
@@ -54,8 +57,8 @@ export default function LoginPage() {
               required 
             />
           </div>
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '1rem', fontSize: '1.1rem' }}>
-            Login
+          <button type="submit" className="btn-primary" disabled={isLoading} style={{ width: '100%', marginTop: '1rem', padding: '1rem', fontSize: '1.1rem' }}>
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
         <p style={{ textAlign: 'center', marginTop: '2rem' }}>

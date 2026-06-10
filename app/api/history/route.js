@@ -23,10 +23,14 @@ export async function GET() {
     const userId = await getSessionUser();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Fetch only recent clears (last ~6 days to cover 5 full PHT calendar days) to ensure the query remains blazing fast forever
+    const sixDaysAgo = new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString();
+
     const { data: clears, error: clearsError } = await supabase
       .from('clears')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .gte('date', sixDaysAgo);
       
     if (clearsError) throw clearsError;
 
