@@ -36,11 +36,12 @@ export async function POST(request) {
     }
 
     const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    const newUserId = crypto.randomUUID();
 
     // Insert user
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert([{ username, password: hashedPassword }])
+      .insert([{ id: newUserId, username, password: hashedPassword }])
       .select()
       .single();
 
