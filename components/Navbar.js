@@ -6,6 +6,7 @@ export default function Navbar() {
   const router = useRouter();
 
   const handleLogout = async () => {
+    sessionStorage.clear();
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/');
     router.refresh();
@@ -18,6 +19,7 @@ export default function Navbar() {
         <Link href="/summary" className="nav-link">Summary</Link>
         <Link href="/edit" className="nav-link">Edit Dailies</Link>
         <Link href="/history" className="nav-link">History</Link>
+        <Link href="/about" className="nav-link">About</Link>
       </div>
       <button onClick={handleLogout} className="logout-btn">Logout</button>
     </nav>

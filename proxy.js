@@ -4,7 +4,7 @@ export default async function proxy(request) {
   const session = request.cookies.get('session_token');
 
   const { pathname } = request.nextUrl;
-  const protectedRoutes = ['/summary', '/edit', '/history'];
+  const protectedRoutes = ['/summary', '/edit', '/history', '/about'];
 
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
     if (!session) {

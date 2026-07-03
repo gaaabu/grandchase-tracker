@@ -45,7 +45,7 @@ export async function POST(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { character_id, dungeon_name, cleared } = body;
+    const { character_id, dungeon_name, cleared, count } = body;
     
     if (!character_id || !dungeon_name) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -54,7 +54,30 @@ export async function POST(request) {
     const now = new Date();
     const { lastReset, nextReset } = getResetWindow(dungeon_name, now);
 
-    if (cleared) {
+    if (count !== undefined) {
+      // 1. Delete all existing clears for this character/dungeon in the current reset cycle
+      const { error: delError } = await supabase
+        .from('clears')
+        .delete()
+        .eq('user_id', userId)
+        .eq('character_id', character_id)
+        .eq('dungeon_name', dungeon_name)
+        .gte('date', lastReset.toISOString())
+        .lt('date', nextReset.toISOString());
+      if (delError) throw delError;
+
+      // 2. Insert exactly `count` clears
+      if (count > 0) {
+        const inserts = Array.from({ length: count }).map(() => ({
+          user_id: userId,
+          character_id,
+          dungeon_name,
+          date: now.toISOString() // Store same exact UTC timestamp for batch grouping
+        }));
+        const { error: insError } = await supabase.from('clears').insert(inserts);
+        if (insError) throw insError;
+      }
+    } else if (cleared) {
       // Check if a clear ALREADY exists in the current active reset cycle
       const { data: existing } = await supabase
         .from('clears')

@@ -22,7 +22,39 @@ export default function SummaryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
-  
+
+  const CURRENT_VERSION = 'v4.0.0';
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.id) {
+          setCurrentUser(data);
+          const dismissedVersion = localStorage.getItem(`dismissed_update_version_${data.id}`);
+          const seenThisSession = sessionStorage.getItem(`seen_update_version_${data.id}`);
+
+          if (dismissedVersion !== CURRENT_VERSION && seenThisSession !== CURRENT_VERSION) {
+            setShowUpdateModal(true);
+          }
+        }
+      })
+      .catch(err => console.error("Failed to fetch user data for modal:", err));
+  }, []);
+
+  const handleCloseUpdateModal = () => {
+    if (currentUser) {
+      sessionStorage.setItem(`seen_update_version_${currentUser.id}`, CURRENT_VERSION);
+      if (dontShowAgain) {
+        localStorage.setItem(`dismissed_update_version_${currentUser.id}`, CURRENT_VERSION);
+      }
+    }
+    setShowUpdateModal(false);
+  };
+
   const [sortOption, setSortOption] = useState("default");
   const [filterOption, setFilterOption] = useState("all");
 
@@ -58,16 +90,21 @@ export default function SummaryPage() {
     setOpenDropdowns(prev => ({ ...prev, [charId]: !prev[charId] }));
   };
 
+  const totalInfinityClears = clears.filter(c => c.dungeon_name === 'infinity').length;
+
   const filteredCharacters = characters.filter(c => {
     if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    
+
     if (filterOption === "lv85plus" && c.level < 85) return false;
     if (filterOption === "lv84minus" && c.level >= 85) return false;
-    
+
     const available = DUNGEONS.filter(d => c.level >= d.reqLevel && c.ta >= d.reqTa);
-    const clearedIds = clears.filter(clear => clear.character_id === c.id).map(x => x.dungeon_name);
+    const rawClearedIds = clears.filter(clear => clear.character_id === c.id).map(x => x.dungeon_name);
+    const clearedIds = (totalInfinityClears >= 3 && available.some(d => d.id === 'infinity') && !rawClearedIds.includes('infinity'))
+      ? [...rawClearedIds, 'infinity']
+      : rawClearedIds;
     const validClearedIds = clearedIds.filter(id => available.some(d => d.id === id));
-    
+
     if (filterOption === "finishedAll") {
       if (available.length === 0 || validClearedIds.length !== available.length) return false;
     }
@@ -86,25 +123,28 @@ export default function SummaryPage() {
         if (!missingAtLeastOne) return false;
       }
     }
-    
+
     return true;
   });
 
   const sortedCharacters = [...filteredCharacters].sort((a, b) => {
     if (sortOption === "levelHigh") return b.level - a.level;
     if (sortOption === "levelLow") return a.level - b.level;
-    
+
     if (sortOption === "clearsMost" || sortOption === "clearsLeast") {
       const getClears = (char) => {
         const available = DUNGEONS.filter(d => char.level >= d.reqLevel && char.ta >= d.reqTa);
-        const clearedIds = clears.filter(c => c.character_id === char.id).map(c => c.dungeon_name);
+        const rawClearedIds = clears.filter(c => c.character_id === char.id).map(c => c.dungeon_name);
+        const clearedIds = (totalInfinityClears >= 3 && available.some(d => d.id === 'infinity') && !rawClearedIds.includes('infinity'))
+          ? [...rawClearedIds, 'infinity']
+          : rawClearedIds;
         return clearedIds.filter(id => available.some(d => d.id === id)).length;
       };
-      
+
       if (sortOption === "clearsMost") return getClears(b) - getClears(a);
       if (sortOption === "clearsLeast") return getClears(a) - getClears(b);
     }
-    
+
     return a.sort_order - b.sort_order;
   });
 
@@ -116,9 +156,9 @@ export default function SummaryPage() {
       </header>
 
       <div className="search-container">
-        <input 
-          type="text" 
-          placeholder="Search characters..." 
+        <input
+          type="text"
+          placeholder="Search characters..."
           className="search-input"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -149,11 +189,11 @@ export default function SummaryPage() {
         </select>
 
         {(sortOption !== 'default' || filterOption !== 'all' || searchQuery !== '' || advFilterStatus !== 'none') && (
-          <button 
-            onClick={() => { 
-              setSortOption('default'); 
-              setFilterOption('all'); 
-              setSearchQuery(''); 
+          <button
+            onClick={() => {
+              setSortOption('default');
+              setFilterOption('all');
+              setSearchQuery('');
               setAdvFilterStatus('none');
               setAdvFilterDungeons([]);
             }}
@@ -166,8 +206,8 @@ export default function SummaryPage() {
         {advFilterStatus !== "none" && (
           <div className="adv-dungeon-pills">
             {DUNGEONS.map(d => (
-              <button 
-                key={d.id} 
+              <button
+                key={d.id}
                 className={`pill-btn ${advFilterDungeons.includes(d.id) ? 'active' : ''}`}
                 onClick={() => {
                   if (advFilterDungeons.includes(d.id)) {
@@ -192,74 +232,111 @@ export default function SummaryPage() {
         </div>
       ) : (
         <div className="characters-grid">
-        {sortedCharacters.map((char, i) => {
-          const availableDungeons = DUNGEONS.filter(d => char.level >= d.reqLevel && char.ta >= d.reqTa);
-          const totalAvailable = availableDungeons.length;
-          
-          const clearedIds = clears.filter(c => c.character_id === char.id).map(c => c.dungeon_name);
-          const validClearedIds = clearedIds.filter(id => availableDungeons.some(d => d.id === id));
-          const totalCleared = validClearedIds.length;
-          
-          const missingDungeons = availableDungeons.filter(d => !validClearedIds.includes(d.id));
-          
-          const progressPercent = totalAvailable === 0 ? 100 : (totalCleared / totalAvailable) * 100;
-          const isComplete = totalAvailable > 0 && totalCleared === totalAvailable;
+          {sortedCharacters.map((char, i) => {
+            const availableDungeons = DUNGEONS.filter(d => char.level >= d.reqLevel && char.ta >= d.reqTa);
+            const totalAvailable = availableDungeons.length;
 
-          return (
-            <div key={char.id} className="character-card" style={{ animationDelay: `${(i % 20) * 0.05}s`, position: 'relative', zIndex: openDropdowns[char.id] ? 100 : 1 }}>
-              <div className="char-portrait-container" style={{borderColor: isComplete ? 'var(--success)' : 'var(--glass-border)'}}>
-                <img 
-                  src={`/images/characters/${char.name.toLowerCase().replace(/\\s+/g, '_')}.webp`} 
-                  alt={char.name}
-                  className="char-portrait"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'block';
-                  }}
-                />
-                <div className="char-placeholder" style={{display: 'none'}}>Portrait</div>
-              </div>
+            const rawClearedIds = clears.filter(c => c.character_id === char.id).map(c => c.dungeon_name);
+            const clearedIds = (totalInfinityClears >= 3 && availableDungeons.some(d => d.id === 'infinity') && !rawClearedIds.includes('infinity'))
+              ? [...rawClearedIds, 'infinity']
+              : rawClearedIds;
 
-              <div className="card-header" style={{borderBottom: 'none', paddingBottom: 0, marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem'}}>
-                <span className="char-name">{char.name}</span>
-                <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-                  <span className="badge">Lv. {char.level}</span>
-                  <span className="badge">TA: {char.ta.toLocaleString()}</span>
-                  {char.awakened && <span className="badge badge-accent">Awakened</span>}
+            const validClearedIds = clearedIds.filter(id => availableDungeons.some(d => d.id === id));
+            const totalCleared = validClearedIds.length;
+
+            const missingDungeons = availableDungeons.filter(d => !validClearedIds.includes(d.id));
+
+            const progressPercent = totalAvailable === 0 ? 100 : (totalCleared / totalAvailable) * 100;
+            const isComplete = totalAvailable > 0 && totalCleared === totalAvailable;
+
+            return (
+              <div key={char.id} className="character-card" style={{ animationDelay: `${(i % 20) * 0.05}s`, position: 'relative', zIndex: openDropdowns[char.id] ? 100 : 1 }}>
+                <div className="char-portrait-container" style={{ borderColor: isComplete ? 'var(--success)' : 'var(--glass-border)' }}>
+                  <img
+                    src={`/images/characters/${char.name.toLowerCase().replace(/\\s+/g, '_')}.webp`}
+                    alt={char.name}
+                    className="char-portrait"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'block';
+                    }}
+                  />
+                  <div className="char-placeholder" style={{ display: 'none' }}>Portrait</div>
                 </div>
-              </div>
 
-              <div className="progress-bar-container">
-                <div className="progress-bar-fill" style={{ width: `${progressPercent}%`, background: isComplete ? 'var(--success)' : 'var(--accent-gradient)' }}></div>
-              </div>
-              
-              <div className="progress-text" style={{color: isComplete ? 'var(--success)' : 'var(--text-secondary)'}}>
-                {totalAvailable === 0 ? 'No Dungeons Available' : `${totalCleared} / ${totalAvailable} Done`}
-              </div>
-
-              {missingDungeons.length > 0 && (
-                <div className="missing-dungeons-wrapper">
-                  <div className="missing-dungeons-dropdown" style={{marginTop: 0, borderBottomLeftRadius: openDropdowns[char.id] ? 0 : '8px', borderBottomRightRadius: openDropdowns[char.id] ? 0 : '8px'}}>
-                    <div className="dropdown-header" onClick={() => toggleDropdown(char.id)}>
-                      <span>Missing Dungeons ({missingDungeons.length})</span>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{transform: openDropdowns[char.id] ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s'}}>
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </div>
+                <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  <span className="char-name">{char.name}</span>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className="badge">Lv. {char.level}</span>
+                    <span className="badge">TA: {char.ta.toLocaleString()}</span>
+                    {char.awakened && <span className="badge badge-accent">Awakened</span>}
                   </div>
-                  {openDropdowns[char.id] && (
-                    <div className="dropdown-content-absolute">
-                      {missingDungeons.map(md => (
-                        <div key={md.id} className="missing-item">{md.name}</div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              )}
+
+                <div className="progress-bar-container">
+                  <div className="progress-bar-fill" style={{ width: `${progressPercent}%`, background: isComplete ? 'var(--success)' : 'var(--accent-gradient)' }}></div>
+                </div>
+
+                <div className="progress-text" style={{ color: isComplete ? 'var(--success)' : 'var(--text-secondary)' }}>
+                  {totalAvailable === 0 ? 'No Dungeons Available' : `${totalCleared} / ${totalAvailable} Done`}
+                </div>
+
+                {missingDungeons.length > 0 && (
+                  <div className="missing-dungeons-wrapper">
+                    <div className="missing-dungeons-dropdown" style={{ marginTop: 0, borderBottomLeftRadius: openDropdowns[char.id] ? 0 : '8px', borderBottomRightRadius: openDropdowns[char.id] ? 0 : '8px' }}>
+                      <div className="dropdown-header" onClick={() => toggleDropdown(char.id)}>
+                        <span>Missing Dungeons ({missingDungeons.length})</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openDropdowns[char.id] ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </div>
+                    </div>
+                    {openDropdowns[char.id] && (
+                      <div className="dropdown-content-absolute">
+                        {missingDungeons.map(md => (
+                          <div key={md.id} className="missing-item">{md.name}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showUpdateModal && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: '600px', border: '2px solid var(--accent-primary)', boxShadow: '0 0 30px rgba(124, 58, 237, 0.4)' }}>
+            <h2 className="modal-title" style={{ fontSize: '2rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+              What's New in <span style={{ color: 'var(--accent-bright)' }}>{CURRENT_VERSION}</span>
+            </h2>
+
+            <div style={{ background: 'var(--bg-deep-void)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
+              <ul style={{ color: 'var(--text-secondary)', lineHeight: '1.8', listStylePosition: 'inside', padding: 0 }}>
+                <li style={{ marginBottom: '1rem' }}><strong style={{ color: 'var(--text-primary)' }}>Account-Wide Infinity Cloister:</strong> The tracker now intelligently handles Infinity Cloister with an account-wide limit of 3 clears per day! It auto-fills for remaining characters once maxed.</li>
+                <li style={{ marginBottom: '1rem' }}><strong style={{ color: 'var(--text-primary)' }}>Submit Concerns:</strong> A brand new 'About' page where you can read FAQs, submit suggestions or bug reports directly to the developer, and securely upload screenshots.</li>
+                <li style={{ marginBottom: '1rem' }}><strong style={{ color: 'var(--text-primary)' }}>Developer Support:</strong> Added a Support module where you can donate via GCash to help keep the servers running!</li>
+              </ul>
             </div>
-          );
-        })}
-      </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)' }}
+                />
+                Do not show again for this version
+              </label>
+              <button className="btn-primary" onClick={handleCloseUpdateModal}>
+                Awesome, thanks!
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

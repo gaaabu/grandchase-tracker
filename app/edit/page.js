@@ -123,6 +123,22 @@ export default function EditPage() {
     });
   };
 
+  const toggleInfinityClear = async (charId, newCount) => {
+    const otherClears = clears.filter(c => !(c.character_id === charId && c.dungeon_name === 'infinity'));
+    const newClears = Array.from({ length: newCount }).map(() => ({ character_id: charId, dungeon_name: 'infinity' }));
+    setClears([...otherClears, ...newClears]);
+
+    await fetch('/api/dailies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        character_id: charId,
+        dungeon_name: 'infinity',
+        count: newCount
+      })
+    });
+  };
+
   const toggleDungeons = (charId) => {
     setOpenDungeons(prev => {
       if (prev[charId]) {
@@ -438,6 +454,36 @@ export default function EditPage() {
                       if (!isAvailable) return null;
 
                       const isCleared = clears.some(c => c.character_id === char.id && c.dungeon_name === dungeon.id);
+
+                      if (dungeon.id === 'infinity') {
+                        const charInfinityClears = clears.filter(c => c.character_id === char.id && c.dungeon_name === 'infinity').length;
+                        const totalInfinityClears = clears.filter(c => c.dungeon_name === 'infinity').length;
+                        
+                        return (
+                          <div key={dungeon.id} className={`dungeon-item ${charInfinityClears > 0 ? 'cleared' : ''}`}>
+                            <span className="dungeon-name">{dungeon.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (charInfinityClears > 0) toggleInfinityClear(char.id, charInfinityClears - 1);
+                                }}
+                                disabled={charInfinityClears === 0}
+                                style={{ background: 'var(--bg-deep-void)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', width: '28px', height: '28px', borderRadius: '6px', cursor: charInfinityClears === 0 ? 'not-allowed' : 'pointer', opacity: charInfinityClears === 0 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >-</button>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', width: '24px', textAlign: 'center' }}>{charInfinityClears}/3</span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (totalInfinityClears < 3 && charInfinityClears < 3) toggleInfinityClear(char.id, charInfinityClears + 1);
+                                }}
+                                disabled={totalInfinityClears >= 3 || charInfinityClears >= 3}
+                                style={{ background: 'var(--bg-deep-void)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', width: '28px', height: '28px', borderRadius: '6px', cursor: (totalInfinityClears >= 3 || charInfinityClears >= 3) ? 'not-allowed' : 'pointer', opacity: (totalInfinityClears >= 3 || charInfinityClears >= 3) ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >+</button>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       return (
                         <div
